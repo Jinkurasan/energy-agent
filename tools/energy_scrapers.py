@@ -180,6 +180,94 @@ def scrape_nikkei_energy(max_articles: int = 10) -> dict:
         return {"source": "日経新聞（エネルギー関連）", "error": str(e), "status": "failed"}
 
 
+# ─── 経産省プレスリリース ───────────────────────────────────────────────────────
+
+def scrape_meti_press(max_articles: int = 10) -> dict:
+    """経産省・資源エネルギー庁のプレスリリースRSSから政策情報を取得"""
+    rss_urls = [
+        "https://www.meti.go.jp/rss/whatsnew.rdf",
+        "https://www.enecho.meti.go.jp/rss/whatsnew.rdf",
+    ]
+    energy_keywords = ["再エネ", "蓄電", "水素", "GX", "脱炭素", "太陽光", "風力", "電力", "省エネ", "カーボン"]
+    for url in rss_urls:
+        try:
+            feed = feedparser.parse(url)
+            if feed.entries:
+                articles = []
+                for entry in feed.entries:
+                    title = entry.get("title", "")
+                    if any(kw in title for kw in energy_keywords) or not energy_keywords:
+                        articles.append({
+                            "title": title,
+                            "summary": entry.get("summary", "")[:300],
+                            "link": entry.get("link", ""),
+                            "published": entry.get("published", ""),
+                        })
+                    if len(articles) >= max_articles:
+                        break
+                if articles:
+                    return {"source": "経産省プレスリリース", "articles": articles, "status": "success"}
+        except Exception:
+            continue
+    return {"source": "経産省プレスリリース", "error": "取得失敗", "status": "failed"}
+
+
+# ─── Reuters エネルギー ────────────────────────────────────────────────────────
+
+def scrape_reuters_energy(max_articles: int = 8) -> dict:
+    """Reuters（英語）からエネルギー・環境分野のグローバルニュースを取得"""
+    rss_urls = [
+        "https://feeds.reuters.com/reuters/environment",
+        "https://feeds.reuters.com/reuters/businessNews",
+    ]
+    energy_keywords = ["energy", "renewable", "solar", "wind", "hydrogen", "battery", "carbon", "climate", "ESG", "green"]
+    for url in rss_urls:
+        try:
+            feed = feedparser.parse(url)
+            if feed.entries:
+                articles = []
+                for entry in feed.entries:
+                    title = entry.get("title", "").lower()
+                    if any(kw in title for kw in energy_keywords):
+                        articles.append({
+                            "title": entry.get("title", ""),
+                            "summary": entry.get("summary", "")[:300],
+                            "link": entry.get("link", ""),
+                            "published": entry.get("published", ""),
+                        })
+                    if len(articles) >= max_articles:
+                        break
+                if articles:
+                    return {"source": "Reuters（エネルギー）", "articles": articles, "status": "success"}
+        except Exception:
+            continue
+    return {"source": "Reuters（エネルギー）", "error": "取得失敗", "status": "failed"}
+
+
+# ─── 東洋経済（エネルギー関連）──────────────────────────────────────────────────
+
+def scrape_toyo_keizai_energy(max_articles: int = 8) -> dict:
+    """東洋経済オンラインからエネルギー・GX関連記事をRSSで取得"""
+    energy_keywords = ["エネルギー", "再エネ", "脱炭素", "GX", "蓄電池", "太陽光", "風力", "水素", "カーボン", "省エネ", "電力"]
+    try:
+        feed = feedparser.parse("https://toyokeizai.net/list/feed/rss")
+        articles = []
+        for entry in feed.entries:
+            title = entry.get("title", "")
+            if any(kw in title for kw in energy_keywords):
+                articles.append({
+                    "title": title,
+                    "summary": entry.get("summary", "")[:300],
+                    "link": entry.get("link", ""),
+                    "published": entry.get("published", ""),
+                })
+            if len(articles) >= max_articles:
+                break
+        return {"source": "東洋経済（エネルギー）", "articles": articles, "status": "success"}
+    except Exception as e:
+        return {"source": "東洋経済（エネルギー）", "error": str(e), "status": "failed"}
+
+
 # ── ツール定義 ───────────────────────────────────────────────────────────────
 
 ENERGY_SCRAPER_TOOLS = [
@@ -231,6 +319,30 @@ ENERGY_SCRAPER_TOOLS = [
             "properties": {"max_articles": {"type": "integer", "default": 10}},
         },
     },
+    {
+        "name": "scrape_meti_press",
+        "description": "経産省・資源エネルギー庁の公式プレスリリースから政策・制度情報を取得します",
+        "input_schema": {
+            "type": "object",
+            "properties": {"max_articles": {"type": "integer", "default": 10}},
+        },
+    },
+    {
+        "name": "scrape_reuters_energy",
+        "description": "Reuters（英語）からグローバルエネルギー・ESG・再エネニュースを取得します",
+        "input_schema": {
+            "type": "object",
+            "properties": {"max_articles": {"type": "integer", "default": 8}},
+        },
+    },
+    {
+        "name": "scrape_toyo_keizai_energy",
+        "description": "東洋経済オンラインからエネルギー・GX関連の分析記事を取得します",
+        "input_schema": {
+            "type": "object",
+            "properties": {"max_articles": {"type": "integer", "default": 8}},
+        },
+    },
 ]
 
 ENERGY_SCRAPER_EXECUTORS = {
@@ -240,4 +352,7 @@ ENERGY_SCRAPER_EXECUTORS = {
     "scrape_energy_news_digital": scrape_energy_news_digital,
     "scrape_enecho": scrape_enecho,
     "scrape_nikkei_energy": scrape_nikkei_energy,
+    "scrape_meti_press": scrape_meti_press,
+    "scrape_reuters_energy": scrape_reuters_energy,
+    "scrape_toyo_keizai_energy": scrape_toyo_keizai_energy,
 }
