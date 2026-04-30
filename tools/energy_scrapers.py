@@ -43,12 +43,13 @@ def scrape_smartjapan(max_articles: int = 10) -> dict:
 
 def scrape_kankyo_business(max_articles: int = 10) -> dict:
     """環境ビジネスオンラインから再エネ・省エネ実務情報を取得"""
+    browser = None
     try:
         with sync_playwright() as p:
             browser, ctx = _load_context(p, "kankyo")
             page = ctx.new_page()
-            page.goto("https://www.kankyo-business.jp/news/", timeout=30000)
-            page.wait_for_load_state("domcontentloaded")
+            page.goto("https://www.kankyo-business.jp/news/", timeout=20000)
+            page.wait_for_load_state("domcontentloaded", timeout=10000)
 
             soup = BeautifulSoup(page.content(), "lxml")
             articles = []
@@ -66,6 +67,11 @@ def scrape_kankyo_business(max_articles: int = 10) -> dict:
             browser.close()
             return {"source": "環境ビジネスオンライン", "articles": articles, "status": "success"}
     except Exception as e:
+        if browser:
+            try:
+                browser.close()
+            except Exception:
+                pass
         return {"source": "環境ビジネスオンライン", "error": str(e), "status": "failed"}
 
 
@@ -73,12 +79,13 @@ def scrape_kankyo_business(max_articles: int = 10) -> dict:
 
 def scrape_solar_journal(max_articles: int = 10) -> dict:
     """ソーラージャーナルから太陽光・再エネ情報を取得"""
+    browser = None
     try:
         with sync_playwright() as p:
             browser, ctx = _load_context(p, "solarjournal")
             page = ctx.new_page()
-            page.goto("https://solarjournal.jp/", timeout=30000)
-            page.wait_for_load_state("domcontentloaded")
+            page.goto("https://solarjournal.jp/", timeout=20000)
+            page.wait_for_load_state("domcontentloaded", timeout=10000)
 
             soup = BeautifulSoup(page.content(), "lxml")
             articles = []
@@ -95,6 +102,11 @@ def scrape_solar_journal(max_articles: int = 10) -> dict:
             browser.close()
             return {"source": "ソーラージャーナル", "articles": articles, "status": "success"}
     except Exception as e:
+        if browser:
+            try:
+                browser.close()
+            except Exception:
+                pass
         return {"source": "ソーラージャーナル", "error": str(e), "status": "failed"}
 
 
@@ -102,12 +114,13 @@ def scrape_solar_journal(max_articles: int = 10) -> dict:
 
 def scrape_energy_news_digital(max_articles: int = 10) -> dict:
     """ENERGY NEWS DIGITAL JAPANからエネルギー専門ニュースを取得"""
+    browser = None
     try:
         with sync_playwright() as p:
             browser, ctx = _load_context(p, "energynews")
             page = ctx.new_page()
-            page.goto("https://news.kcsf.co.jp/", timeout=30000)
-            page.wait_for_load_state("domcontentloaded")
+            page.goto("https://news.kcsf.co.jp/", timeout=20000)
+            page.wait_for_load_state("domcontentloaded", timeout=10000)
 
             soup = BeautifulSoup(page.content(), "lxml")
             articles = []
@@ -123,6 +136,11 @@ def scrape_energy_news_digital(max_articles: int = 10) -> dict:
             browser.close()
             return {"source": "ENERGY NEWS DIGITAL JAPAN", "articles": articles, "status": "success"}
     except Exception as e:
+        if browser:
+            try:
+                browser.close()
+            except Exception:
+                pass
         return {"source": "ENERGY NEWS DIGITAL JAPAN", "error": str(e), "status": "failed"}
 
 
@@ -130,12 +148,13 @@ def scrape_energy_news_digital(max_articles: int = 10) -> dict:
 
 def scrape_enecho(max_articles: int = 10) -> dict:
     """資源エネルギー庁から政策・制度改正の一次情報を取得"""
+    browser = None
     try:
         with sync_playwright() as p:
             browser, ctx = _load_context(p, "enecho")
             page = ctx.new_page()
-            page.goto("https://www.enecho.meti.go.jp/category/saving_and_new/", timeout=30000)
-            page.wait_for_load_state("domcontentloaded")
+            page.goto("https://www.enecho.meti.go.jp/category/saving_and_new/", timeout=20000)
+            page.wait_for_load_state("domcontentloaded", timeout=10000)
 
             soup = BeautifulSoup(page.content(), "lxml")
             articles = []
@@ -153,6 +172,11 @@ def scrape_enecho(max_articles: int = 10) -> dict:
             browser.close()
             return {"source": "資源エネルギー庁", "articles": articles, "status": "success"}
     except Exception as e:
+        if browser:
+            try:
+                browser.close()
+            except Exception:
+                pass
         return {"source": "資源エネルギー庁", "error": str(e), "status": "failed"}
 
 
