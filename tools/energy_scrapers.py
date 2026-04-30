@@ -2,22 +2,16 @@
 エネルギー・環境ビジネス分野の情報ソースから収集するスクレイパー群。
 """
 import feedparser
-from playwright.sync_api import sync_playwright
+import httpx
 from bs4 import BeautifulSoup
-from pathlib import Path
-from config import SESSION_DIR
+
+_HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
 
-def _load_context(playwright, site_name: str, headless: bool = True):
-    browser = playwright.chromium.launch(headless=headless)
-    session_file = SESSION_DIR / f"{site_name}.json"
-    if session_file.exists():
-        ctx = browser.new_context(storage_state=str(session_file))
-    else:
-        ctx = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        )
-    return browser, ctx
+def _fetch_html(url: str) -> str:
+    resp = httpx.get(url, headers=_HEADERS, timeout=15.0, follow_redirects=True)
+    resp.raise_for_status()
+    return resp.text
 
 
 # ─── スマートジャパン（ITmedia RSS）────────────────────────────────────────────
@@ -43,35 +37,21 @@ def scrape_smartjapan(max_articles: int = 10) -> dict:
 
 def scrape_kankyo_business(max_articles: int = 10) -> dict:
     """環境ビジネスオンラインから再エネ・省エネ実務情報を取得"""
-    browser = None
     try:
-        with sync_playwright() as p:
-            browser, ctx = _load_context(p, "kankyo")
-            page = ctx.new_page()
-            page.goto("https://www.kankyo-business.jp/news/", timeout=20000)
-            page.wait_for_load_state("domcontentloaded", timeout=10000)
-
-            soup = BeautifulSoup(page.content(), "lxml")
-            articles = []
-
-            for item in soup.select("article, .news-item, li.list-item, div.article-item")[:max_articles]:
-                title_el = item.select_one("h2, h3, a.title, a")
-                date_el = item.select_one("time, .date, span.date")
-                if title_el and title_el.get_text(strip=True):
-                    articles.append({
-                        "title": title_el.get_text(strip=True),
-                        "date": date_el.get_text(strip=True) if date_el else "",
-                        "link": title_el.get("href", ""),
-                    })
-
-            browser.close()
-            return {"source": "環境ビジネスオンライン", "articles": articles, "status": "success"}
+        html = _fetch_html("https://www.kankyo-business.jp/news/")
+        soup = BeautifulSoup(html, "lxml")
+        articles = []
+        for item in soup.select("article, .news-item, li.list-item, div.article-item")[:max_articles]:
+            title_el = item.select_one("h2, h3, a.title, a")
+            date_el = item.select_one("time, .date, span.date")
+            if title_el and title_el.get_text(strip=True):
+                articles.append({
+                    "title": title_el.get_text(strip=True),
+                    "date": date_el.get_text(strip=True) if date_el else "",
+                    "link": title_el.get("href", ""),
+                })
+        return {"source": "環境ビジネスオンライン", "articles": articles, "status": "success"}
     except Exception as e:
-        if browser:
-            try:
-                browser.close()
-            except Exception:
-                pass
         return {"source": "環境ビジネスオンライン", "error": str(e), "status": "failed"}
 
 
@@ -79,34 +59,20 @@ def scrape_kankyo_business(max_articles: int = 10) -> dict:
 
 def scrape_solar_journal(max_articles: int = 10) -> dict:
     """ソーラージャーナルから太陽光・再エネ情報を取得"""
-    browser = None
     try:
-        with sync_playwright() as p:
-            browser, ctx = _load_context(p, "solarjournal")
-            page = ctx.new_page()
-            page.goto("https://solarjournal.jp/", timeout=20000)
-            page.wait_for_load_state("domcontentloaded", timeout=10000)
-
-            soup = BeautifulSoup(page.content(), "lxml")
-            articles = []
-
-            for item in soup.select("article, .post, .entry")[:max_articles]:
-                title_el = item.select_one("h2, h3, .entry-title, a")
-                excerpt_el = item.select_one("p, .excerpt")
-                if title_el and title_el.get_text(strip=True):
-                    articles.append({
-                        "title": title_el.get_text(strip=True),
-                        "excerpt": excerpt_el.get_text(strip=True)[:200] if excerpt_el else "",
-                    })
-
-            browser.close()
-            return {"source": "ソーラージャーナル", "articles": articles, "status": "success"}
+        html = _fetch_html("https://solarjournal.jp/")
+        soup = BeautifulSoup(html, "lxml")
+        articles = []
+        for item in soup.select("article, .post, .entry")[:max_articles]:
+            title_el = item.select_one("h2, h3, .entry-title, a")
+            excerpt_el = item.select_one("p, .excerpt")
+            if title_el and title_el.get_text(strip=True):
+                articles.append({
+                    "title": title_el.get_text(strip=True),
+                    "excerpt": excerpt_el.get_text(strip=True)[:200] if excerpt_el else "",
+                })
+        return {"source": "ソーラージャーナル", "articles": articles, "status": "success"}
     except Exception as e:
-        if browser:
-            try:
-                browser.close()
-            except Exception:
-                pass
         return {"source": "ソーラージャーナル", "error": str(e), "status": "failed"}
 
 
@@ -114,33 +80,19 @@ def scrape_solar_journal(max_articles: int = 10) -> dict:
 
 def scrape_energy_news_digital(max_articles: int = 10) -> dict:
     """ENERGY NEWS DIGITAL JAPANからエネルギー専門ニュースを取得"""
-    browser = None
     try:
-        with sync_playwright() as p:
-            browser, ctx = _load_context(p, "energynews")
-            page = ctx.new_page()
-            page.goto("https://news.kcsf.co.jp/", timeout=20000)
-            page.wait_for_load_state("domcontentloaded", timeout=10000)
-
-            soup = BeautifulSoup(page.content(), "lxml")
-            articles = []
-
-            for item in soup.select("article, .news-item, .post, li")[:max_articles]:
-                title_el = item.select_one("h2, h3, a")
-                if title_el and len(title_el.get_text(strip=True)) > 10:
-                    articles.append({
-                        "title": title_el.get_text(strip=True),
-                        "link": title_el.get("href", ""),
-                    })
-
-            browser.close()
-            return {"source": "ENERGY NEWS DIGITAL JAPAN", "articles": articles, "status": "success"}
+        html = _fetch_html("https://news.kcsf.co.jp/")
+        soup = BeautifulSoup(html, "lxml")
+        articles = []
+        for item in soup.select("article, .news-item, .post, li")[:max_articles]:
+            title_el = item.select_one("h2, h3, a")
+            if title_el and len(title_el.get_text(strip=True)) > 10:
+                articles.append({
+                    "title": title_el.get_text(strip=True),
+                    "link": title_el.get("href", ""),
+                })
+        return {"source": "ENERGY NEWS DIGITAL JAPAN", "articles": articles, "status": "success"}
     except Exception as e:
-        if browser:
-            try:
-                browser.close()
-            except Exception:
-                pass
         return {"source": "ENERGY NEWS DIGITAL JAPAN", "error": str(e), "status": "failed"}
 
 
@@ -148,35 +100,23 @@ def scrape_energy_news_digital(max_articles: int = 10) -> dict:
 
 def scrape_enecho(max_articles: int = 10) -> dict:
     """資源エネルギー庁から政策・制度改正の一次情報を取得"""
-    browser = None
     try:
-        with sync_playwright() as p:
-            browser, ctx = _load_context(p, "enecho")
-            page = ctx.new_page()
-            page.goto("https://www.enecho.meti.go.jp/category/saving_and_new/", timeout=20000)
-            page.wait_for_load_state("domcontentloaded", timeout=10000)
-
-            soup = BeautifulSoup(page.content(), "lxml")
-            articles = []
-
-            for item in soup.select("li, .news-item, tr")[:max_articles]:
-                title_el = item.select_one("a")
-                date_el = item.select_one("time, .date, td.date")
-                if title_el and len(title_el.get_text(strip=True)) > 10:
-                    articles.append({
-                        "title": title_el.get_text(strip=True),
-                        "date": date_el.get_text(strip=True) if date_el else "",
-                        "link": "https://www.enecho.meti.go.jp" + title_el.get("href", ""),
-                    })
-
-            browser.close()
-            return {"source": "資源エネルギー庁", "articles": articles, "status": "success"}
+        html = _fetch_html("https://www.enecho.meti.go.jp/category/saving_and_new/")
+        soup = BeautifulSoup(html, "lxml")
+        articles = []
+        for item in soup.select("li, .news-item, tr")[:max_articles]:
+            title_el = item.select_one("a")
+            date_el = item.select_one("time, .date, td.date")
+            if title_el and len(title_el.get_text(strip=True)) > 10:
+                href = title_el.get("href", "")
+                link = href if href.startswith("http") else "https://www.enecho.meti.go.jp" + href
+                articles.append({
+                    "title": title_el.get_text(strip=True),
+                    "date": date_el.get_text(strip=True) if date_el else "",
+                    "link": link,
+                })
+        return {"source": "資源エネルギー庁", "articles": articles, "status": "success"}
     except Exception as e:
-        if browser:
-            try:
-                browser.close()
-            except Exception:
-                pass
         return {"source": "資源エネルギー庁", "error": str(e), "status": "failed"}
 
 
