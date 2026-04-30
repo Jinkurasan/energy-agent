@@ -106,13 +106,29 @@ def _load_latest_output(step_suffix: str) -> str:
 
 
 def _parse_formatted(raw: str) -> dict:
+    # マークダウンコードブロックを除去
+    text = raw.strip()
+    if "```" in text:
+        import re
+        m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+        if m:
+            text = m.group(1)
     try:
-        start, end = raw.find("{"), raw.rfind("}") + 1
+        start, end = text.find("{"), text.rfind("}") + 1
         if start >= 0 and end > start:
-            return json.loads(raw[start:end])
+            result = json.loads(text[start:end])
+            # lineキーが欠けている場合は空文字を補完
+            if "line" not in result:
+                result["line"] = ""
+            return result
     except json.JSONDecodeError:
         pass
-    return {"note": {"title": "エネルギーレポート", "content": raw}, "notion": {"title": "エネルギーレポート", "content": raw}, "tweets": []}
+    return {
+        "note": {"title": "エネルギーレポート", "content": raw},
+        "notion": {"title": "エネルギーレポート", "content": raw},
+        "line": "",
+        "tweets": [],
+    }
 
 
 def _save_output(step: str, content: str):
