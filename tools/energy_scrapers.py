@@ -14,12 +14,17 @@ def _fetch_html(url: str) -> str:
     return resp.text
 
 
+def _fetch_rss(url: str):
+    resp = httpx.get(url, headers=_HEADERS, timeout=15.0, follow_redirects=True)
+    return feedparser.parse(resp.content)
+
+
 # ─── スマートジャパン（ITmedia RSS）────────────────────────────────────────────
 
 def scrape_smartjapan(max_articles: int = 10) -> dict:
     """スマートジャパン（ITmedia）のRSSから電力・エネルギーニュースを取得"""
     try:
-        feed = feedparser.parse("https://rss.itmedia.co.jp/rss/2.0/smartjapan.xml")
+        feed = _fetch_rss("https://rss.itmedia.co.jp/rss/2.0/smartjapan.xml")
         articles = []
         for entry in feed.entries[:max_articles]:
             articles.append({
@@ -125,7 +130,7 @@ def scrape_enecho(max_articles: int = 10) -> dict:
 def scrape_nikkei_energy(max_articles: int = 10) -> dict:
     """日経新聞の環境・エネルギー関連ニュースを取得"""
     try:
-        feed = feedparser.parse("https://www.nikkei.com/rss/menu.xml")
+        feed = _fetch_rss("https://www.nikkei.com/rss/menu.xml")
         articles = []
         energy_keywords = ["エネルギー", "再エネ", "脱炭素", "GX", "蓄電池", "太陽光", "風力", "水素", "カーボン"]
         for entry in feed.entries:
@@ -155,7 +160,7 @@ def scrape_meti_press(max_articles: int = 10) -> dict:
     energy_keywords = ["再エネ", "蓄電", "水素", "GX", "脱炭素", "太陽光", "風力", "電力", "省エネ", "カーボン"]
     for url in rss_urls:
         try:
-            feed = feedparser.parse(url)
+            feed = _fetch_rss(url)
             if feed.entries:
                 articles = []
                 for entry in feed.entries:
@@ -187,7 +192,7 @@ def scrape_reuters_energy(max_articles: int = 8) -> dict:
     energy_keywords = ["energy", "renewable", "solar", "wind", "hydrogen", "battery", "carbon", "climate", "ESG", "green"]
     for url in rss_urls:
         try:
-            feed = feedparser.parse(url)
+            feed = _fetch_rss(url)
             if feed.entries:
                 articles = []
                 for entry in feed.entries:
@@ -214,7 +219,7 @@ def scrape_toyo_keizai_energy(max_articles: int = 8) -> dict:
     """東洋経済オンラインからエネルギー・GX関連記事をRSSで取得"""
     energy_keywords = ["エネルギー", "再エネ", "脱炭素", "GX", "蓄電池", "太陽光", "風力", "水素", "カーボン", "省エネ", "電力"]
     try:
-        feed = feedparser.parse("https://toyokeizai.net/list/feed/rss")
+        feed = _fetch_rss("https://toyokeizai.net/list/feed/rss")
         articles = []
         for entry in feed.entries:
             title = entry.get("title", "")
